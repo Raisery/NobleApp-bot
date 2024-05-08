@@ -1,0 +1,132 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model NobleUser {
+  id          String           @id
+  name        String
+  musics      Music[]          @relation("NobleUserToMusic")
+  playlists   Playlist[]       @relation("NobleUserToPlaylist")
+  songs       Song[]           @relation("NobleUserToSong")
+  voiceEvents UserVoiceEvent[] @relation("NobleUserToUserVoiceEvent")
+  guilds      Guild[]          @relation("NobleUserToGuilds")
+}
+
+model Guild {
+  id            String            @id
+  name          String
+  ownerId       String
+  durationLimit DateTime
+  voiceEvents   GuildVoiceEvent[] @relation("GuildToGuildVoiceEvent")
+  musics        Music[]           @relation("GuildToMusic")
+  playlists     Playlist[]        @relation("GuildToPlaylist")
+  songs         Song[]            @relation("GuildsToSong")
+  usersEvents   UserVoiceEvent[]  @relation("GuildToUserVoiceEvent")
+  users         NobleUser[]       @relation("NobleUserToGuilds")
+}
+
+model UserVoiceEvent {
+  id       Int       @id @default(autoincrement())
+  type     String
+  userId   String
+  songId   Int
+  guildId  String
+  isActive Boolean
+  guild    Guild     @relation("GuildToUserVoiceEvent", fields: [guildId], references: [id])
+  song     Song      @relation("UserVoiceEventToSong", fields: [songId], references: [id])
+  user     NobleUser @relation("NobleUserToUserVoiceEvent", fields: [userId], references: [id])
+}
+
+model Song {
+  id              Int              @id @default(autoincrement())
+  title           String
+  duration        DateTime
+  artist          String
+  authorId        String
+  guildId         String
+  guildvoiceevent GuildVoiceEvent? @relation("SongToGuildVoiceEvent")
+  guild           Guild            @relation("GuildsToSong", fields: [guildId], references: [id])
+  author          NobleUser        @relation("NobleUserToSong", fields: [authorId], references: [id])
+  userVoiceEvents UserVoiceEvent[] @relation("UserVoiceEventToSong")
+}
+
+model GuildVoiceEvent {
+  id       Int     @id @default(autoincrement())
+  type     String
+  guildId  String
+  songId   Int     @unique
+  isActive Boolean
+  song     Song    @relation("SongToGuildVoiceEvent", fields: [songId], references: [id])
+  guild    Guild   @relation("GuildToGuildVoiceEvent", fields: [guildId], references: [id])
+}
+
+model Music {
+  id        Int        @id @default(autoincrement())
+  title     String
+  artist    String?
+  duration  DateTime
+  authorId  String
+  guildId   String
+  guild     Guild      @relation("GuildToMusic", fields: [guildId], references: [id])
+  author    NobleUser  @relation("NobleUserToMusic", fields: [authorId], references: [id])
+  playlists Playlist[] @relation("MusicToPlaylist")
+}
+
+model Playlist {
+  id       Int       @id @default(autoincrement())
+  name     String
+  authorId String
+  guildId  String
+  guild    Guild     @relation("GuildToPlaylist", fields: [guildId], references: [id])
+  author   NobleUser @relation("NobleUserToPlaylist", fields: [authorId], references: [id])
+  musics   Music[]   @relation("MusicToPlaylist")
+}
